@@ -1,15 +1,42 @@
 <?php
 session_start();
 
-// Redirigir si no hay sesión activa
-if (!isset($_SESSION['user_id'])) {
-    header('Location: login.php');
-    exit();
+// Configuración de la base de datos
+$host = 'localhost'; // Cambia si es necesario
+$db = 'Duno01'; // Nombre de tu base de datos
+$user = 'root'; // Tu usuario de MySQL
+$pass = '123456'; // Tu contraseña de MySQL
+
+// Conexión a la base de datos
+$conn = new mysqli($host, $user, $pass, $db);
+
+// Verifica la conexión
+if ($conn->connect_error) {
+    die("Conexión fallida: " . $conn->connect_error);
 }
 
-// Verifica si el rol existe en la sesión
-if (!isset($_SESSION['role'])) {
-    die("Error: No se encontró el rol del usuario en la sesión.");
+// Procesar el formulario de creación de usuario
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    $username = $_POST['username'];
+    $password = $_POST['password'];
+    $email = $_POST['email'];
+    $role = $_POST['role'];
+
+    // Hashear la contraseña
+    $hashed_password = password_hash($password, PASSWORD_DEFAULT);
+
+    // Insertar el nuevo usuario en la base de datos
+    $sql = "INSERT INTO usuarios (username, password, email, rol) VALUES (?, ?, ?, ?)";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("ssss", $username, $hashed_password, $email, $role);
+
+    if ($stmt->execute()) {
+        // Redirigir al panel de administración después de crear el usuario
+        header("Location: admin.php");
+        exit(); // Asegúrate de salir para evitar que se ejecute el resto del código
+    } else {
+        echo "Error al crear el usuario: " . $stmt->error;
+    }
 }
 ?>
 
@@ -18,75 +45,32 @@ if (!isset($_SESSION['role'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DoñaSucia</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: #f4f4f4;
-        }
-        .head {
-            background: #333;
-            color: #fff;
-            padding: 10px;
-            text-align: center;
-        }
-        .navbar {
-            margin-top: 10px;
-        }
-        .navbar a {
-            color: #fff;
-            text-decoration: none;
-            margin: 0 15px;
-        }
-        .content {
-            padding: 20px;
- text-align: center;
-        }
-        textarea {
-            width: 100%;
-            padding: 10px;
-            margin-top: 10px;
-        }
-        input[type="submit"] {
-            background-color: #5cb85c;
-            color: white;
-            border: none;
-            padding: 10px 15px;
-            cursor: pointer;
-        }
-        input[type="submit"]:hover {
-            background-color: #4cae4c;
-        }
-    </style>
+    <title>Crear Usuario</title>
 </head>
 <body>
-    <div class="head">
-        <h1>Bienvenido a DoñaSucia</h1>
-        <div class="navbar">
-            <a href="logout.php">Cerrar Sesión</a>
-            <?php if ($_SESSION['role'] == 'admin'): ?>
-                <a href="admin.php">Panel de Administración</a>
-            <?php endif; ?>
-        </div>
-    </div>
-
-    <div class="content">
-        <h2>Contenido Principal</h2>
-        <!-- Contenido general aquí -->
-
-        <?php if ($_SESSION['role'] == 'admin'): ?>
-            <h2>Modo Administrador</h2>
-            <form action="admin_actions.php" method="POST">
-                <label for="newContent">Contenido a modificar:</label>
-                <textarea name="newContent" id="newContent" rows="4" cols="50"></textarea>
-                <br>
-                <input type="submit" value="Guardar Cambios">
-            </form>
-        <?php endif; ?>
- </form>
-        <?php endif; ?>
-    </div>
+    <h1>Crear Nuevo Usuario</h1>
+    <form action="" method="POST">
+        <label for="username">Usuario:</label>
+        <input type="text" id="username" name="username" required>
+        <br>
+        <label for="password">Contraseña:</label>
+        <input type="password" id="password" name="password" required>
+        <br>
+        <label for="email">Email:</label>
+        <input type="email" id="email" name="email" required>
+        <br>
+        <label for="role">Rol:</label>
+        <select id="role" name="role">
+            <option value="admin">Administrador</option>
+            <option value="usuario">Usuario</option>
+        </select>
+        <br>
+        <input type="submit" value="Crear Usuario">
+    </form>
+    <a href="admin.php">Volver al Panel de Administración</a>
 </body>
 </html>
+
+<?php
+$conn->close(); // Cierra la conexión a la base de datos
+?>
