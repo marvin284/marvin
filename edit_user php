@@ -1,0 +1,95 @@
+<?php
+session_start();
+
+// Verificar que el usuario esté autenticado y que sea un administrador
+if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
+    header('Location: login.php');
+    exit();
+}
+
+// Configuración de la base de datos
+$host = 'localhost';
+$db = 'Duno01';
+$user = 'root';
+$pass = '123456';
+
+// Conexión a la base de datos
+$conn = new mysqli($host, $user, $pass, $db);
+
+// Verifica la conexión
+if ($conn->connect_error) {
+    die("Conexión fallida: " . $conn->connect_error);
+}
+
+// Verificar si se recibió un ID
+if (isset($_GET['id'])) {
+    $id = $_GET['id'];
+
+    // Obtener los datos del usuario
+    $sql = "SELECT * FROM usuarios WHERE id = ?";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("i", $id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    if ($result->num_rows === 1) {
+        $user = $result->fetch_assoc();
+    } else {
+        echo "Usuario no encontrado.";
+        exit();
+    }
+} else {
+    echo "ID de usuario no proporcionado.";
+    exit();
+}
+
+// Actualizar los datos si se envía el formulario
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    $username = $_POST['username'];
+    $email = $_POST['email'];
+    $role = $_POST['role'];
+
+    $sql = "UPDATE usuarios SET username = ?, email = ?, rol = ? WHERE id = ?"; // Asegúrate de que el nombre de la columna sea 'rol'
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("sssi", $username, $email, $role, $id);
+
+    if ($stmt->execute()) {
+        header('Location: admin.php');
+        exit();
+    } else {
+        echo "Error al actualizar los datos: " . $stmt->error; // Mostrar el error si hay un problema
+    }
+}
+?>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Editar Usuario</title>
+</head>
+<body>
+    <h1>Editar Usuario</h1>
+    <form action="" method="POST">
+        <label for="username">Usuario:</label>
+        <input type="text" id="username" name="username" value="<?php echo htmlspecialchars($user['username']); ?>" required>
+        <br>
+        <label for="email">Email:</label>
+        <input type="email" id="email" name="email" value="<?php echo htmlspecialchars($user['email']); ?>" required>
+        <br>
+        <label for="role">Rol:</label>
+        <select id="role" name="role">
+            <option value="admin" <?php echo ($user['rol'] === 'admin') ? 'selected' : ''; ?>>Administrador</option>
+            <option value="usuario" <?php echo ($user['rol'] === 'usuario') ? 'selected' : ''; ?>>Usuario</option>
+        </select>
+        <br>
+        <input type="submit" value="Actualizar Usuario">
+    </form>
+    <a href="admin.php">Volver al Panel de Administración</a>
+</body>
+</html>
+
+<?php
+$conn->close(); // Cierra la conexión a la base de datos
+?>
